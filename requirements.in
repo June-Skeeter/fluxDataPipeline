@@ -1,0 +1,14 @@
+cdsapi
+h5netcdf
+pandas
+netcdf4
+matplotlib
+xarray
+eccodes
+rasterio
+cfgrib
+h5py
+rioxarray
+geopandas
+pyyaml
+numpy

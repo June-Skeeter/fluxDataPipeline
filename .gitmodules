@@ -1,0 +1,6 @@
+[submodule "scripts/submodules/Binary_Database"]
+	path = scripts/submodules/Binary_Database
+	url = https://github.com/June-Skeeter/Binary_Database.git
+[submodule "scripts/submodules/ERA5_Data_Downloader"]
+	path = scripts/submodules/ERA5_Data_Downloader
+	url = https://github.com/June-Skeeter/ERA5_Data_Downloader.git
