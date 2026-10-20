@@ -10,3 +10,6 @@
 [submodule "scripts/submodules/fluxCalculator"]
 	path = scripts/submodules/fluxCalculator
 	url = https://github.com/June-Skeeter/fluxCalculator.git
+[submodule "scripts/submodules/fileParser"]
+	path = scripts/submodules/fileParser
+	url = https://github.com/June-Skeeter/fileParser.git
