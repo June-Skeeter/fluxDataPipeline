@@ -1,0 +1,14 @@
+siteID:
+siteName: ''
+dateStart: '2024-07-15T00:00:00+00:00'
+dateStop: '2028-03-31T23:59:59+00:00'
+sitePI: ''
+latitude: 69.2264167
+longitude: -135.2519067
+altitude: 0
+canopyHeight: .25
+siteDescription: ''
+instrumentation: 
+  dataLoggers: {}
+  ecSensors: {}
+  biometSensors: {}

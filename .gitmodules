@@ -4,3 +4,9 @@
 [submodule "scripts/submodules/ERA5_Data_Downloader"]
 	path = scripts/submodules/ERA5_Data_Downloader
 	url = https://github.com/June-Skeeter/ERA5_Data_Downloader.git
+[submodule "scripts/submodules/helperFunctions"]
+	path = scripts/submodules/helperFunctions
+	url = https://github.com/June-Skeeter/helperFunctions.git
+[submodule "scripts/submodules/fluxCalculator"]
+	path = scripts/submodules/fluxCalculator
+	url = https://github.com/June-Skeeter/fluxCalculator.git

@@ -1,6 +1,6 @@
 from scripts.submodules.ERA5_Data_Downloader.download_ERA5_Data import getERA5_atPoint,getERA5_IDW_at_points
 from scripts.submodules.Binary_Database.database import database
-from scripts.project import project,newProject
+from scripts.project import project,newProject,site
 from matplotlib import pyplot as plt
 import shutil
 import os
