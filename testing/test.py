@@ -1,12 +1,36 @@
 from scripts.submodules.ERA5_Data_Downloader.download_ERA5_Data import getERA5_atPoint,getERA5_IDW_at_points
+from scripts.submodules.fluxCalculator.ecf32 import ecf32Create
 from scripts.submodules.Binary_Database.database import database
-from scripts.project import project,newProject,site
+from scripts.submodules.fileParser.parseCSI import TOB3
+from scripts.siteMetadata.siteMetadata import siteConfiguration
+from scripts.project import project
 from matplotlib import pyplot as plt
 import shutil
 import os
 
 shutil.rmtree('testing/testProject')
-newProject(projectPath='testing/testProject')
+pr = project(projectPath='testing/testProject',new=True)
+# Test Case
+# siteConfiguration(
+#     saveTo='testing/testProject/Sites',
+#     siteID='SCL',
+#     instrumentation={
+#         'dataLoggers':{'main':{'modelName':'cr1000x'}},
+#         'biometSensors':{'RN':{'modelName': 'NRLite','dateStop':'2026-09-30T00:00:00+00:00'},
+#                          'Tair':{'modelName':'HMP35A'}},
+#         'ecSensors':{'CSAT3':{'modelName':'CSAT3','Zm':3.285,'northOffset':33,'dateStop':'2024-09-16T00:00:00+00:00'},
+#                      'irgason':{'modelName': 'IRGASON','Zm':3.285,'northOffset':33,'dateStart':'2025-08-01T00:00:00+00:00'},
+#                      'li7700':{'modelName': 'LI7700','xSeparation':0.45,'ySeparation':0.13,'zSeparation':0}}
+#         })#.validate(saveTo='testing/testProject/Sites')
+os.makedirs('testing/testProject/Sites/SCL',exist_ok=True)
+shutil.copy2('testing/templates/SCL_template.yml','testing/testProject/Sites/SCL/SCL_siteMetadata.yml')
+pr.loadSite('SCL')
+# siteConfiguration.from_yaml('testing/testProject/Sites/SCL_siteMetadata.yml',kwargs={'validate':True})
+
+# df = TOB3().read("/mnt/e/data-dump/SCL/2026/20260801/57840_Time_Series_164.dat")
+# ecf32Create.ecf32Write(dataframe=df,siteID='SCL',outputPath='testing/ecf32')
+# df
+# breakpoint()
 
 # ds = getERA5_atPoint(
 #     dataPath=os.path.join(os.path.split(__file__)[0],'data'),

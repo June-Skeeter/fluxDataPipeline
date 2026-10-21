@@ -19,17 +19,19 @@ class instrument():
             self.ID = f"{self.modelName}_{self.serialNumber}"
         try:
             if self.dateStart != '':
-                if not type(self.dateStart) is str:
+                if not isinstance(self.dateStart,str):
                     self.dateStart = self.dateStart.isoformat()
                 self.dateStart = datetime.fromisoformat(self.dateStart)
                 if self.dateStart.tzinfo is None:
                     exit(f"Error in {self.modelName}: dates must specify UTC offset in yaml timestamp, e.g., +00:00, -06:00, etc.")
+                self.dateStart = self.dateStart.isoformat()
             if self.dateStop != '':
-                if not type(self.dateStop) is str:
+                if not isinstance(self.dateStop,str):
                     self.dateStop = self.dateStop.isoformat()
                 self.dateStop = datetime.fromisoformat(self.dateStop)
                 if self.dateStop.tzinfo is None:
                     exit(f"Error in {self.modelName}: dates must specify UTC offset in yaml timestamp, e.g., +00:00, -06:00, etc.")
+                self.dateStop =self.dateStop.isoformat()
         except Exception as e:
             exit(f"Error in {self.modelName}: date objects must be in iso format (with UTC offset specified), e.g. 2099-12-31T23:59:59-07:00\n\n{e}")
 

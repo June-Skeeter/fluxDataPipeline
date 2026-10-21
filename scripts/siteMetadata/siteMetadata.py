@@ -1,8 +1,7 @@
 import os
 import pandas as pd
-from datetime import datetime
-from zoneinfo import ZoneInfo
-from scripts.project import project
+from datetime import datetime, timezone
+from dataclasses import dataclass, field
 from scripts.siteMetadata.instrumentation import hardwareModels
 from scripts.submodules.helperFunctions.dataclassAddOns import dataclassFromYaml, classMethods
 from scripts.submodules.helperFunctions.dictFunctions import dictFunctions
@@ -11,18 +10,65 @@ from scripts.submodules.fluxCalculator.ecf32.ecf32Create import ghgMetadataWrite
 configurations = os.path.join(os.getcwd(),'configFiles')
 site = dataclassFromYaml(os.path.join(configurations,'siteConfiguration.yml'),bases=(classMethods,dictFunctions))
 
+@dataclass(kw_only=True)
 class siteConfiguration(site):
+    saveTo: str = field(default=None,repr=False)
+    validate: bool = field(default=False,repr=False)
 
-    def validate(self,saveTo=None):
+    def __post_init__(self):
+        if hasattr(self,'__classmethod_flag__') and self.__classmethod_flag__['method'] == 'from_yaml':
+            self.source = self.__classmethod_flag__['source']
+            readFrom = os.path.split(self.__classmethod_flag__['fpath'])[0]
+            fname= os.path.join(readFrom,f"{self.siteID}_instrumentHistory.csv")
+            if not os.path.isfile(fname) or self.validate:
+                self.validateMetadata(saveTo=readFrom)
+            self.instrumentHistory = pd.read_csv(fname,index_col=[0],header=[0])
+            fname= os.path.join(readFrom,f"{self.siteID}_ecInstrumentGroups.csv")
+            self.ecInstrumentGroups = pd.read_csv(fname,index_col=[0],header=[0,1])
+        else:
+            self.source = None
+            if self.saveTo:
+                self.validateMetadata(saveTo=self.saveTo)
+
+    def validateMetadata(self,saveTo=None):
+        print(f"validating {self.siteID}_siteMetadata.yml")
+        # if loaded from yaml, insert missing parameters, preserve flags
+        if self.source:
+            self.checkSiteParameters()
         self.checkInstruments()
         self.getInstrumentHistory()
         self.makeMetadataFiles()
         if saveTo:
+            os.makedirs(saveTo,exist_ok=True)
             fname= os.path.join(saveTo,f"{self.siteID}_siteMetadata.yml")
-            print(f"Saving to: {fname}")
-            self.saveDict(self.dcToDict(self),fname)
+            if not os.path.isfile(fname):
+                print(f"Saving siteMetadata to: {fname}")
+                self.saveDict(self.dcToDict(self),fname)
+            elif self.source:
+                self.saveDict(self.source,fname)
+                breakpoint()
+            fname= os.path.join(saveTo,f"{self.siteID}_instrumentHistory.csv")
+            print(f"Saving instrumentHistory to: {fname}")
+            self.instrumentHistory.to_csv(fname)
+            fname= os.path.join(saveTo,f"{self.siteID}_ecInstrumentGroups.csv")
+            print(f"Saving ecInstrumentGroups to: {fname}")
+            self.ecInstrumentGroups.to_csv(fname)
 
-            breakpoint()
+    def checkSiteParameters(self):
+        for key in site.__annotations__.keys():
+            value = getattr(self,key)
+            if key.startswith('date'):
+                if isinstance(value,str):
+                    temp = datetime.fromisoformat(value)
+                else:
+                    temp = value
+                if temp.tzinfo is None:
+                    exit(f"Error  in {self.__classmethod_flag__['fpath']}\n{key}: dates must specify UTC offset in yaml timestamp, e.g., +00:00, -06:00, etc.")
+            if not isinstance(value, dict):
+                if key not in self.source:
+                    self.source[key] = value
+                elif value != self.source[key]:
+                    exit('Unexpected error in checkSiteParameters')                
 
     def checkInstruments(self):
         temp = self.instrumentation.copy()
@@ -32,20 +78,22 @@ class siteConfiguration(site):
             if kind not in hardwareModels.keys():
                 self.logError(f"Instrumentation kind = {kind} not yet supported, see/update {hardwareModels['path']}")
                 
-            for model in values.values():
+            for sourceID,model in values.items():
                 modelName = model['modelName'].lower()
                 if modelName not in hardwareModels[kind].keys():
                     self.logError(f"Instrumentation model = {modelName} of kind = {kind} not yet supported, see/update {hardwareModels['path']}")
                 model = hardwareModels[kind][modelName](**model)
                 if model.dateStart == '':
+                    print(f"{model.ID} missing dateStart, defaulting to site-level value: {self.dateStart}")
                     model.dateStart = self.dateStart
-                else:
-                    model.dateStart = model.dateStart.isoformat()
                 if model.dateStop == '':
+                    print(f"{model.ID} missing dateStop, defaulting to site-level value: {self.dateStop}")
                     model.dateStop = self.dateStop
-                else:
-                    model.dateStop = model.dateStop.isoformat()
                 self.instrumentation[kind][model.ID] = model
+                if self.source:
+                    for key,value in model.__dict__.items():
+                        if key not in self.source['instrumentation'][kind][sourceID]:
+                            self.source['instrumentation'][kind][sourceID][key] = value
         
     def getInstrumentHistory(self):
         self.instrumentHistory = pd.DataFrame()
@@ -56,8 +104,8 @@ class siteConfiguration(site):
                     data=True,
                     name=v.ID,
                     index=pd.date_range(
-                        datetime.fromisoformat(v.dateStart),
-                        datetime.fromisoformat(v.dateStop),
+                        datetime.fromisoformat(v.dateStart).astimezone(timezone.utc),
+                        datetime.fromisoformat(v.dateStop).astimezone(timezone.utc),
                         freq=f"1800s"),
                         )
                 for k,v in biometSensors.items()
@@ -74,8 +122,8 @@ class siteConfiguration(site):
                     data = True,
                     name=v.ID,
                     index=pd.date_range(
-                        datetime.fromisoformat(v.dateStart),
-                        datetime.fromisoformat(v.dateStop),
+                        datetime.fromisoformat(v.dateStart).astimezone(timezone.utc),
+                        datetime.fromisoformat(v.dateStop).astimezone(timezone.utc),
                         freq='1800s'),
                         )
                 if hasattr(v,'referenceSonic') and v.referenceSonic else
@@ -83,8 +131,8 @@ class siteConfiguration(site):
                     data = False,
                     name=v.ID,
                     index=pd.date_range(
-                        datetime.fromisoformat(v.dateStart),
-                        datetime.fromisoformat(v.dateStop),
+                        datetime.fromisoformat(v.dateStart).astimezone(timezone.utc),
+                        datetime.fromisoformat(v.dateStop).astimezone(timezone.utc),
                         freq='1800s'),
                         )
                 for k,v in ecSensors.items() 
@@ -142,15 +190,3 @@ class siteConfiguration(site):
             self.ecInstrumentGroups.append(pd.DataFrame(index=[groupID],data=ghgMetadata.asDictionary(flat=True)))
         self.ecInstrumentGroups = pd.concat(self.ecInstrumentGroups,sort=True)
 
-
-## Test Case
-# siteConfiguration(
-#     siteID='SCL',
-#     instrumentation={
-#         'dataLoggers':{'main':{'modelName':'cr1000x'}},
-#         'biometSensors':{'RN':{'modelName': 'NRLite','dateStop':'2026-09-30T00:00:00+00:00'},
-#                          'Tair':{'modelName':'HMP35A'}},
-#         'ecSensors':{'CSAT3':{'modelName':'CSAT3','Zm':3.285,'northOffset':33,'dateStop':'2024-09-16T00:00:00+00:00'},
-#                      'irgason':{'modelName': 'IRGASON','Zm':3.285,'northOffset':33,'dateStart':'2025-08-01T00:00:00+00:00'},
-#                      'li7700':{'modelName': 'LI7700','xSeparation':0.45,'ySeparation':0.13,'zSeparation':0}}
-#         }).validate(saveTo='/home/jskeeter/gsc-permafrost/fluxDataPipeline/testing/testProject')
