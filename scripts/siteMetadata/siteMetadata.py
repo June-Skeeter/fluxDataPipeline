@@ -24,7 +24,7 @@ class siteConfiguration(site):
             self.saveTo = os.path.split(self.__classmethod_flag__['fpath'])[0]
             fname= os.path.join(self.saveTo,f"{self.siteID}_instrumentHistory.csv")
             if not os.path.isfile(fname) or self.validate:
-                self.validateMetadata(saveTo=self.saveTo)
+                self.validateMetadata()
             self.instrumentHistory = pd.read_csv(fname,index_col=[0],header=[0])
             fname= os.path.join(self.saveTo,f"{self.siteID}_ecInstrumentGroups.csv")
             self.ecInstrumentGroups = pd.read_csv(fname,index_col=[0],header=[0,1])
@@ -33,27 +33,27 @@ class siteConfiguration(site):
         else:
             self.source = None
             if self.saveTo:
-                self.validateMetadata(saveTo=self.saveTo)
+                self.validateMetadata()
 
-    def saveSite(self,saveTo):
-        os.makedirs(saveTo,exist_ok=True)
-        fname = os.path.join(saveTo,f"{self.siteID}_siteMetadata.yml")
+    def saveSite(self):
+        os.makedirs(self.saveTo,exist_ok=True)
+        fname = os.path.join(self.saveTo,f"{self.siteID}_siteMetadata.yml")
         if not os.path.isfile(fname):
             print(f"Saving siteMetadata to: {fname}")
             self.saveDict(self.dcToDict(self),fname)
         elif self.source:
             self.saveDict(self.source,fname)
-        fname = os.path.join(saveTo,f"{self.siteID}_instrumentHistory.csv")
+        fname = os.path.join(self.saveTo,f"{self.siteID}_instrumentHistory.csv")
         print(f"Saving instrumentHistory to: {fname}")
         self.instrumentHistory.to_csv(fname)
-        fname = os.path.join(saveTo,f"{self.siteID}_ecInstrumentGroups.csv")
+        fname = os.path.join(self.saveTo,f"{self.siteID}_ecInstrumentGroups.csv")
         print(f"Saving ecInstrumentGroups to: {fname}")
         self.ecInstrumentGroups.to_csv(fname)
-        fname = os.path.join(saveTo,'sourceFiles','.sourceFileInventory.json')
+        fname = os.path.join(self.saveTo,'sourceFiles','.sourceFileInventory.json')
         if not os.path.isfile(fname):
             self.saveDict(self.sourceFileInventory,fname)
 
-    def validateMetadata(self,saveTo=None):
+    def validateMetadata(self):
         print(f"validating {self.siteID}_siteMetadata.yml")
         # if loaded from yaml, insert missing parameters, preserve flags
         if self.source:
@@ -61,8 +61,8 @@ class siteConfiguration(site):
         self.checkInstruments()
         self.getInstrumentHistory()
         self.makeMetadataFiles()
-        if saveTo:
-            self.saveSite(saveTo)
+        if self.saveTo:
+            self.saveSite()
 
     def checkSiteParameters(self):
         for key in site.__annotations__.keys():
@@ -100,6 +100,8 @@ class siteConfiguration(site):
                 if model.dateStop == '':
                     print(f"{model.ID} missing dateStop, defaulting to site-level value: {self.dateStop}")
                     model.dateStop = self.dateStop
+                if model.stationName == '':
+                    print(f'Warning: witout statinoName, {model.ID} cannot be auto-linked to a datalogger, which may impact performance')
                 self.instrumentation[kind][model.ID] = model
                 if self.source:
                     for key,value in model.__dict__.items():
@@ -216,4 +218,4 @@ class siteConfiguration(site):
                 }
         print(f"New files found: {len(newFiles)}")
         self.sourceFileInventory[request_id] = self.sourceFileInventory[request_id] | newFiles
-        self.saveSite(self.saveTo)
+        self.saveSite()

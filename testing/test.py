@@ -8,34 +8,52 @@ from matplotlib import pyplot as plt
 import shutil
 import os
 
-if os.path.isdir('testing/testProject'):
-    shutil.rmtree('testing/testProject')
-pr = project(projectPath='testing/testProject',new=True)
-os.makedirs('testing/testProject/Sites/SCL',exist_ok=True)
-shutil.copy2('testing/templates/SCL_template.yml','testing/testProject/Sites/SCL/SCL_siteMetadata.yml')
-# pr.loadSite('SCL').findFiles(
-#     fileID='Time_Series',
-#     searchPath='/mnt/d/data-dump/SCL/2026/20260801',
-#     fileNameMatch='57840_Time_Series_*.dat',
-# )
+
+def driveCheck(path):
+    for drive in ['E:','D:','C:/','/mnt/d','/mnt/e','/mtn/c']:
+        if os.path.isdir(os.path.join(drive,path)):
+            path = os.path.join(drive,path)
+        else: drive = None
+    if drive is None:
+        exit('No drive/mnt present where expected, if using wsl, try: sudo mount -t drvfs D: /mnt/d (or sudo mount -t drvfs E: /mnt/e)')
+    return(path)
+
+# sudo mount -t drvfs D: /mnt/d -o
+root = 'testing'
+projectName = 'testProject'
+projectPath = os.path.join(root,projectName)
+source = driveCheck('data-dump')
+
+
+if os.path.isdir(projectPath):
+    shutil.rmtree(projectPath)
+pr = project(projectPath=projectPath,new=True)
+pr.loadSite('SCL',template='testing/templates/SCL_template.yml')
+
+exit('Implement better approache to dataNames.  Sacrifice simplicity in definitions for the hobo parser for more general perfomance in files with more consitent performance')
+pr.loadFiles(
+    siteID='SCL',
+    fileID='Biomet_Data',
+    fileFormat='TOB3',
+    searchPath=os.path.join(source,'SCL'),
+    fileNameMatch='57840_Flux_CSFormat_*.dat',
+
+)
+
 
 # pr.loadFiles(
 #     siteID='SCL',
-#     fileID='Biomet_Data',
-#     fileFormat='TOB3',
-#     searchPath='/mnt/e/data-dump/SCL/2026/20260801',
-#     fileNameMatch='57840_Flux_CSFormat_*.dat',
+#     fileID='TS_1',
+#     fileFormat='HOBOcsv',
+#     searchPath=os.path.join(source,'SCL'),
+#     fileNameMatch='20750528-SHSC.SSM*.csv',
+#     kwargs={'dataNames':{'variableName':['TS_5cm','TS_10cm','TS_50cm','TS_100cm'],'units':['C','C','C','C']}
+#     }
 # )
 
-
-pr.loadFiles(
-    siteID='SCL',
-    fileID='TS_1',
-    fileFormat='HOBOcsv',
-    searchPath='/mnt/e/data-dump/SCL',
-    fileNameMatch='20750528-SHSC.SSM*.csv'
-)
-
+db = database(databasePath=os.path.join(projectPath,'Database','yyyy','SCL','Biomet_Data'),errors='pass')
+df = db.loadDatabase(startYear=2024,stopYear=2026)
+breakpoint()
 
 # Test Case
 # siteConfiguration(

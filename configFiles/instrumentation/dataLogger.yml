@@ -1,2 +1,9 @@
+modelName: 
 instrumentType: dataLogger
 instrumentClass: dataLogger
+stationName: 
+manufacturer: ''
+serialNumber: ''
+ID:  ''
+dateStart: ''
+dateStop: ''

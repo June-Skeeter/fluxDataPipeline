@@ -14,7 +14,7 @@ biometSensors:
   cs301: biomet
   cs310: biomet
   cs320: biomet
-  thermocouple: biomet
+  thermocouple: thermocouple
   thermistor: biomet
   pls: biomet
 dataLoggers:

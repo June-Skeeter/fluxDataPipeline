@@ -9,9 +9,9 @@ import shutil
 import os
 
 fileParsers = {
-    'TOB3':parseCSI.TOB3(),
-    'TOA5':parseCSI.TOA5(),
-    'HOBOcsv':parseCSV.HOBOcsv()
+    'TOB3':parseCSI.TOB3,
+    'TOA5':parseCSI.TOA5,
+    'HOBOcsv':parseCSV.HOBOcsv
 }
 
 @dataclass(kw_only=True)
@@ -29,12 +29,18 @@ class project:
         # else:
         #     self.siteCoordinates = gpd.read_file(os.path.join(self.projectPath,'siteCoordinates.geojson'))
 
-    def loadSite(self,siteID):
-        fpath = os.path.join(self.projectPath,'Sites',siteID,f"{siteID}_siteMetadata.yml")
+    def loadSite(self,siteID,template=False):
+        if template:
+            fpath = os.path.join(self.projectPath,'Sites',siteID)
+            os.makedirs(fpath,exist_ok=True)
+            fpath = os.path.join(fpath,f'{siteID}_siteMetadata.yml')
+            shutil.copy2(template,fpath)
+        else:
+            fpath = os.path.join(self.projectPath,'Sites',siteID,f"{siteID}_siteMetadata.yml")
         self.Sites[siteID] = siteConfiguration.from_yaml(fpath,kwargs={'validate':True},preserveComments=True)
         return(self.Sites[siteID])
 
-    def loadFiles(self,siteID,fileID,fileFormat,searchPath=None,fileNameMatch='',fileNameExclude='',outputFormat='Database'):
+    def loadFiles(self,siteID,fileID,fileFormat,searchPath=None,fileNameMatch='',fileNameExclude='',outputFormat='Database',kwargs={}):
         request_id = f"{fileID}_{fileFormat}"
         if siteID not in self.Sites:
             self.loadSite(siteID)
@@ -44,10 +50,14 @@ class project:
             db = database(databasePath=os.path.join(self.projectPath,outputFormat,'yyyy',siteID,fileID))
             for file,md in self.Sites[siteID].sourceFileInventory[request_id].items():
                 if md is None:
-                    df = fileParsers[fileFormat].read(file)
-                    success = db.loadDataFrame(df)
-                    self.Sites[siteID].sourceFileInventory[request_id][file] = success
+                    df = fileParsers[fileFormat](kwargs).read(file)
+                    outcome = db.loadDataFrame(df)
+                    if isinstance(outcome,str) and outcome.startswith('Warning'):
+                        print(outcome)
+                        breakpoint()
+                    self.Sites[siteID].sourceFileInventory[request_id][file] = outcome
 
+            self.Sites[siteID].saveSite()
             # breakpoint()
 
 

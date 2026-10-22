@@ -64,6 +64,8 @@ for kind in hardwareModels.keys():
         filePath = os.path.join(configurations,f"{value}.yml")
         if 'sonic' in value:
             hardwareModels[kind][key] = dataclassFromYaml(filePath,(genericSensor,calculateSeparation))
+        elif kind == 'dataLoggers':
+            hardwareModels[kind][key] = dataclassFromYaml(filePath)
         else:
             hardwareModels[kind][key] = dataclassFromYaml(filePath,(genericSensor,))
 hardwareModels['path'] = os.path.join(configurations,"hardwareModels.yml")
