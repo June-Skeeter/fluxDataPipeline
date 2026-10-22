@@ -18,15 +18,23 @@ shutil.copy2('testing/templates/SCL_template.yml','testing/testProject/Sites/SCL
 #     searchPath='/mnt/d/data-dump/SCL/2026/20260801',
 #     fileNameMatch='57840_Time_Series_*.dat',
 # )
+
+# pr.loadFiles(
+#     siteID='SCL',
+#     fileID='Biomet_Data',
+#     fileFormat='TOB3',
+#     searchPath='/mnt/e/data-dump/SCL/2026/20260801',
+#     fileNameMatch='57840_Flux_CSFormat_*.dat',
+# )
+
+
 pr.loadFiles(
     siteID='SCL',
-    fileID='Biomet_Data',
-    fileFormat='TOB3',
-    searchPath='/mnt/d/data-dump/SCL/2026/20260801',
-    fileNameMatch='57840_Flux_CSFormat_*.dat',
+    fileID='TS_1',
+    fileFormat='HOBOcsv',
+    searchPath='/mnt/e/data-dump/SCL',
+    fileNameMatch='20750528-SHSC.SSM*.csv'
 )
-
-
 
 
 # Test Case

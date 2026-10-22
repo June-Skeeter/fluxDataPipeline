@@ -35,6 +35,24 @@ class siteConfiguration(site):
             if self.saveTo:
                 self.validateMetadata(saveTo=self.saveTo)
 
+    def saveSite(self,saveTo):
+        os.makedirs(saveTo,exist_ok=True)
+        fname = os.path.join(saveTo,f"{self.siteID}_siteMetadata.yml")
+        if not os.path.isfile(fname):
+            print(f"Saving siteMetadata to: {fname}")
+            self.saveDict(self.dcToDict(self),fname)
+        elif self.source:
+            self.saveDict(self.source,fname)
+        fname = os.path.join(saveTo,f"{self.siteID}_instrumentHistory.csv")
+        print(f"Saving instrumentHistory to: {fname}")
+        self.instrumentHistory.to_csv(fname)
+        fname = os.path.join(saveTo,f"{self.siteID}_ecInstrumentGroups.csv")
+        print(f"Saving ecInstrumentGroups to: {fname}")
+        self.ecInstrumentGroups.to_csv(fname)
+        fname = os.path.join(saveTo,'sourceFiles','.sourceFileInventory.json')
+        if not os.path.isfile(fname):
+            self.saveDict(self.sourceFileInventory,fname)
+
     def validateMetadata(self,saveTo=None):
         print(f"validating {self.siteID}_siteMetadata.yml")
         # if loaded from yaml, insert missing parameters, preserve flags
@@ -44,22 +62,7 @@ class siteConfiguration(site):
         self.getInstrumentHistory()
         self.makeMetadataFiles()
         if saveTo:
-            os.makedirs(saveTo,exist_ok=True)
-            fname = os.path.join(saveTo,f"{self.siteID}_siteMetadata.yml")
-            if not os.path.isfile(fname):
-                print(f"Saving siteMetadata to: {fname}")
-                self.saveDict(self.dcToDict(self),fname)
-            elif self.source:
-                self.saveDict(self.source,fname)
-            fname = os.path.join(saveTo,f"{self.siteID}_instrumentHistory.csv")
-            print(f"Saving instrumentHistory to: {fname}")
-            self.instrumentHistory.to_csv(fname)
-            fname = os.path.join(saveTo,f"{self.siteID}_ecInstrumentGroups.csv")
-            print(f"Saving ecInstrumentGroups to: {fname}")
-            self.ecInstrumentGroups.to_csv(fname)
-            fname = os.path.join(saveTo,'sourceFiles','.sourceFileInventory.json')
-            if not os.path.isfile(fname):
-                self.saveDict(self.sourceFileInventory,fname)
+            self.saveSite(saveTo)
 
     def checkSiteParameters(self):
         for key in site.__annotations__.keys():
@@ -213,4 +216,4 @@ class siteConfiguration(site):
                 }
         print(f"New files found: {len(newFiles)}")
         self.sourceFileInventory[request_id] = self.sourceFileInventory[request_id] | newFiles
-        self.saveDict(self.sourceFileInventory,os.path.join(self.saveTo,'sourceFiles','.sourceFileInventory.json'))
+        self.saveSite(self.saveTo)

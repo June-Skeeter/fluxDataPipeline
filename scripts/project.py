@@ -48,7 +48,7 @@ class project:
                     success = db.loadDataFrame(df)
                     self.Sites[siteID].sourceFileInventory[request_id][file] = success
 
-            breakpoint()
+            # breakpoint()
 
 
 
