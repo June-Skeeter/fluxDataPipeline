@@ -8,8 +8,27 @@ from matplotlib import pyplot as plt
 import shutil
 import os
 
-shutil.rmtree('testing/testProject')
+if os.path.isdir('testing/testProject'):
+    shutil.rmtree('testing/testProject')
 pr = project(projectPath='testing/testProject',new=True)
+os.makedirs('testing/testProject/Sites/SCL',exist_ok=True)
+shutil.copy2('testing/templates/SCL_template.yml','testing/testProject/Sites/SCL/SCL_siteMetadata.yml')
+# pr.loadSite('SCL').findFiles(
+#     fileID='Time_Series',
+#     searchPath='/mnt/d/data-dump/SCL/2026/20260801',
+#     fileNameMatch='57840_Time_Series_*.dat',
+# )
+pr.loadFiles(
+    siteID='SCL',
+    fileID='Biomet_Data',
+    fileFormat='TOB3',
+    searchPath='/mnt/d/data-dump/SCL/2026/20260801',
+    fileNameMatch='57840_Flux_CSFormat_*.dat',
+)
+
+
+
+
 # Test Case
 # siteConfiguration(
 #     saveTo='testing/testProject/Sites',
@@ -22,9 +41,7 @@ pr = project(projectPath='testing/testProject',new=True)
 #                      'irgason':{'modelName': 'IRGASON','Zm':3.285,'northOffset':33,'dateStart':'2025-08-01T00:00:00+00:00'},
 #                      'li7700':{'modelName': 'LI7700','xSeparation':0.45,'ySeparation':0.13,'zSeparation':0}}
 #         })#.validate(saveTo='testing/testProject/Sites')
-os.makedirs('testing/testProject/Sites/SCL',exist_ok=True)
-shutil.copy2('testing/templates/SCL_template.yml','testing/testProject/Sites/SCL/SCL_siteMetadata.yml')
-pr.loadSite('SCL')
+
 # siteConfiguration.from_yaml('testing/testProject/Sites/SCL_siteMetadata.yml',kwargs={'validate':True})
 
 # df = TOB3().read("/mnt/e/data-dump/SCL/2026/20260801/57840_Time_Series_164.dat")

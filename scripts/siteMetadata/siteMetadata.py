@@ -1,5 +1,7 @@
 import os
+import uuid
 import pandas as pd
+from fnmatch import fnmatch
 from datetime import datetime, timezone
 from dataclasses import dataclass, field
 from scripts.siteMetadata.instrumentation import hardwareModels
@@ -14,17 +16,20 @@ site = dataclassFromYaml(os.path.join(configurations,'siteConfiguration.yml'),ba
 class siteConfiguration(site):
     saveTo: str = field(default=None,repr=False)
     validate: bool = field(default=False,repr=False)
+    sourceFileInventory: dict = field(default_factory=dict,repr=False,init=False)
 
     def __post_init__(self):
         if hasattr(self,'__classmethod_flag__') and self.__classmethod_flag__['method'] == 'from_yaml':
             self.source = self.__classmethod_flag__['source']
-            readFrom = os.path.split(self.__classmethod_flag__['fpath'])[0]
-            fname= os.path.join(readFrom,f"{self.siteID}_instrumentHistory.csv")
+            self.saveTo = os.path.split(self.__classmethod_flag__['fpath'])[0]
+            fname= os.path.join(self.saveTo,f"{self.siteID}_instrumentHistory.csv")
             if not os.path.isfile(fname) or self.validate:
-                self.validateMetadata(saveTo=readFrom)
+                self.validateMetadata(saveTo=self.saveTo)
             self.instrumentHistory = pd.read_csv(fname,index_col=[0],header=[0])
-            fname= os.path.join(readFrom,f"{self.siteID}_ecInstrumentGroups.csv")
+            fname= os.path.join(self.saveTo,f"{self.siteID}_ecInstrumentGroups.csv")
             self.ecInstrumentGroups = pd.read_csv(fname,index_col=[0],header=[0,1])
+            fname = os.path.join(self.saveTo,'sourceFiles','.sourceFileInventory.json')
+            self.sourceFileInventory = self.loadDict(fname)
         else:
             self.source = None
             if self.saveTo:
@@ -40,19 +45,21 @@ class siteConfiguration(site):
         self.makeMetadataFiles()
         if saveTo:
             os.makedirs(saveTo,exist_ok=True)
-            fname= os.path.join(saveTo,f"{self.siteID}_siteMetadata.yml")
+            fname = os.path.join(saveTo,f"{self.siteID}_siteMetadata.yml")
             if not os.path.isfile(fname):
                 print(f"Saving siteMetadata to: {fname}")
                 self.saveDict(self.dcToDict(self),fname)
             elif self.source:
                 self.saveDict(self.source,fname)
-                breakpoint()
-            fname= os.path.join(saveTo,f"{self.siteID}_instrumentHistory.csv")
+            fname = os.path.join(saveTo,f"{self.siteID}_instrumentHistory.csv")
             print(f"Saving instrumentHistory to: {fname}")
             self.instrumentHistory.to_csv(fname)
-            fname= os.path.join(saveTo,f"{self.siteID}_ecInstrumentGroups.csv")
+            fname = os.path.join(saveTo,f"{self.siteID}_ecInstrumentGroups.csv")
             print(f"Saving ecInstrumentGroups to: {fname}")
             self.ecInstrumentGroups.to_csv(fname)
+            fname = os.path.join(saveTo,'sourceFiles','.sourceFileInventory.json')
+            if not os.path.isfile(fname):
+                self.saveDict(self.sourceFileInventory,fname)
 
     def checkSiteParameters(self):
         for key in site.__annotations__.keys():
@@ -61,6 +68,7 @@ class siteConfiguration(site):
                 if isinstance(value,str):
                     temp = datetime.fromisoformat(value)
                 else:
+                    print('Warning: wrap YAML timestamps with quotes to presever anchor tags; tags aer lost when parsing pure timestamp objects')
                     temp = value
                 if temp.tzinfo is None:
                     exit(f"Error  in {self.__classmethod_flag__['fpath']}\n{key}: dates must specify UTC offset in yaml timestamp, e.g., +00:00, -06:00, etc.")
@@ -190,3 +198,19 @@ class siteConfiguration(site):
             self.ecInstrumentGroups.append(pd.DataFrame(index=[groupID],data=ghgMetadata.asDictionary(flat=True)))
         self.ecInstrumentGroups = pd.concat(self.ecInstrumentGroups,sort=True)
 
+    def findFiles(self,request_id,fileFormat,searchPath,fileNameMatch,fileNameExclude=''):
+        if not fileNameMatch.startswith('*'):
+            fileNameMatch = f"*{fileNameMatch}"
+        self.sourceFileInventory.setdefault(request_id,{})
+        newFiles = {
+                    os.path.join(dir,file):None
+                    for dir,_,files in os.walk(searchPath)
+                    for file in files if (
+                        fnmatch(os.path.join(dir,file),fileNameMatch) and 
+                        not fnmatch(os.path.join(dir,file),fileNameExclude) and
+                        os.path.join(dir,file) not in self.sourceFileInventory[request_id]
+                    )
+                }
+        print(f"New files found: {len(newFiles)}")
+        self.sourceFileInventory[request_id] = self.sourceFileInventory[request_id] | newFiles
+        self.saveDict(self.sourceFileInventory,os.path.join(self.saveTo,'sourceFiles','.sourceFileInventory.json'))

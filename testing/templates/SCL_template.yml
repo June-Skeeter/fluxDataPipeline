@@ -1,8 +1,8 @@
 siteID: SCL
 siteName: Swiss Cheese Lake
 lat_lon: [69.2264167, -135.2519067]
-dateStart: &stationInstalled 2024-07-10T00:00:00+00:00
-dateStop: &stationDecommissioned 2028-03-31T23:59:59+00:00
+dateStart: &stationInstalled "2024-07-10T00:00:00+00:00"
+dateStop: &stationDecommissioned "2028-03-31T23:59:59+00:00"
 instrumentation:
   dataLoggers:
     main:
@@ -12,8 +12,8 @@ instrumentation:
       serialNumber: 1
       stationName: 'SCL_57840'
     winterMet:
-      dateStart: &wxBreakStart 2024-09-15T00:00:00+00:00
-      dateStop: &wxBreakStop 2025-06-19T00:00:00+00:00
+      dateStart: &wxBreakStart "2024-09-15T00:00:00+00:00"
+      dateStop: &wxBreakStop "2025-06-19T00:00:00+00:00"
       modelName: CR10x
       serialNumber: 1
       stationName: OverWinter
@@ -35,7 +35,7 @@ instrumentation:
       serialNumber: 1
       referenceSonic: True
       dateStart: *stationInstalled
-      dateStop: &ubcSensorsOut 2024-09-15T00:00:00+07:00
+      dateStop: &ubcSensorsOut "2024-09-15T00:00:00+07:00"
       Zm: &V1_Zm 3.285
       northOffset: &V1_northOffset 33.0
     LI7500-UBC:
@@ -58,7 +58,7 @@ instrumentation:
       modelName: IRGASON
       serialNumber: 1
       referenceSonic: True
-      dateStart: &gscSensorsIn 2025-08-01T00:00:00+07:00
+      dateStart: &gscSensorsIn "2025-08-01T00:00:00+07:00"
       dateStop: *stationDecommissioned
       Zm: *V1_Zm
       northOffset: *V1_northOffset
