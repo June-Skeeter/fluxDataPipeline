@@ -1,25 +1,21 @@
 import os
+import uuid
 import numpy as np
 import pandas as pd
 from fnmatch import fnmatch
+from functools import partial
 from datetime import datetime, timezone
 from dataclasses import dataclass, field
-from scripts.submodules.fileParser import parseCSI,parseCSV
+from concurrent.futures import ProcessPoolExecutor
 from scripts.siteMetadata.instrumentation import hardwareModels
 from scripts.submodules.Binary_Database.database import database
+from scripts.siteMetadata.fileLoader import fileLoader,fileReader
 from scripts.submodules.helperFunctions.dataclassAddOns import dataclassFromYaml, classMethods
 from scripts.submodules.helperFunctions.dictFunctions import dictFunctions
 from scripts.submodules.fluxCalculator.ecf32.ecf32Create import highFrequency,ghgMetadataWriter
 
 configurations = os.path.join(os.getcwd(),'configFiles')
 site = dataclassFromYaml(os.path.join(configurations,'siteConfiguration.yml'),bases=(classMethods,dictFunctions))
-
-fileParsers = {
-    'TOB3':parseCSI.TOB3,
-    'TOA5':parseCSI.TOA5,
-    'MixedArray':parseCSI.MixedArray,
-    'HOBOcsv':parseCSV.HOBOcsv
-}
 
 @dataclass(kw_only=True)
 class siteConfiguration(site):
@@ -34,11 +30,14 @@ class siteConfiguration(site):
             fname= os.path.join(self.saveTo,f"{self.siteID}_instrumentHistory.csv")
             if not os.path.isfile(fname) or self.validate:
                 self.validateMetadata()
-            self.instrumentHistory = pd.read_csv(fname,index_col=[0],header=[0])
+            self.instrumentHistory = pd.read_csv(fname,index_col=[0],header=[0],parse_dates=[0])
+            fname = os.path.join(self.saveTo,'sourceFiles',f'{self.siteID}_instrumentHistory.json')
+            self.instrumentIndexMap = self.loadDict(fname)
             fname= os.path.join(self.saveTo,f"{self.siteID}_ecInstrumentGroups.csv")
             self.ecInstrumentGroups = pd.read_csv(fname,index_col=[0],header=[0,1])
             fname = os.path.join(self.saveTo,'sourceFiles','.sourceFileInventory.json')
             self.sourceFileInventory = self.loadDict(fname)
+
         else:
             self.source = None
             if self.saveTo:
@@ -55,11 +54,12 @@ class siteConfiguration(site):
         fname = os.path.join(self.saveTo,f"{self.siteID}_instrumentHistory.csv")
         print(f"Saving instrumentHistory to: {fname}")
         self.instrumentHistory.to_csv(fname)
+        fname = os.path.join(self.saveTo,'sourceFiles',f'{self.siteID}_instrumentHistory.json')
+        self.saveDict(self.instrumentIndexMap,fname,indent=4)
         fname = os.path.join(self.saveTo,f"{self.siteID}_ecInstrumentGroups.csv")
         print(f"Saving ecInstrumentGroups to: {fname}")
         self.ecInstrumentGroups.to_csv(fname)
         fname = os.path.join(self.saveTo,'sourceFiles','.sourceFileInventory.json')
-        # if not os.path.isfile(fname):
         self.saveDict(self.sourceFileInventory,fname,indent=4)
 
     def validateMetadata(self):
@@ -118,6 +118,7 @@ class siteConfiguration(site):
                             self.source['instrumentation'][kind][sourceID][key] = value
         
     def getInstrumentHistory(self):
+        self.instrumentIndexMap = {'biometSensors':{},'ecSensors':{}}
         self.instrumentHistory = pd.DataFrame()
         if len(self.instrumentation['biometSensors']):
             biometSensors = self.instrumentation['biometSensors']
@@ -136,7 +137,10 @@ class siteConfiguration(site):
             for sen in biometHistory.columns:
                 biometInstrumentHistory.loc[biometHistory[sen].notna()] += f"-{sen}"
             biometInstrumentHistory = biometInstrumentHistory.str.strip('-')
-            self.instrumentHistory = pd.concat([biometInstrumentHistory])
+            self.instrumentIndexMap['biometSensors'] = {str(uuid.uuid5(uuid.NAMESPACE_DNS,str(idx))):idx for idx in biometInstrumentHistory.unique()}
+            biometInstrumentHistory = biometInstrumentHistory.replace(self.invertDict(self.instrumentIndexMap['biometSensors']))
+        else:
+            biometInstrumentHistory = pd.Series(name='biometSensors')
         if len(self.instrumentation['ecSensors']):
             ecSensors = self.instrumentation['ecSensors']
             ecHistory = pd.concat([
@@ -182,7 +186,11 @@ class siteConfiguration(site):
                     setattr(self.instrumentation['ecSensors'][scalar],'northwardSeparation',north)
                     setattr(self.instrumentation['ecSensors'][scalar],'eastwardSeparation',east)
             ecInstrumentHistory = ecInstrumentHistory.str.strip('-')
-            self.instrumentHistory = pd.concat([self.instrumentHistory,ecInstrumentHistory],axis=1)
+            self.instrumentIndexMap['ecSensors'] = {str(uuid.uuid5(uuid.NAMESPACE_DNS,str(idx))):idx for idx in ecInstrumentHistory.unique()}
+            ecInstrumentHistory = ecInstrumentHistory.replace(self.invertDict(self.instrumentIndexMap['ecSensors']))
+        else:
+            ecInstrumentHistory = pd.Series(name='ecSensors')
+        self.instrumentHistory = pd.concat([biometInstrumentHistory,ecInstrumentHistory],axis=1)
             
     def makeMetadataFiles(self):
         # Generate the template .metadata file for the group, to be filled with FileDescription at a later stage (in case different files for same configuration)
@@ -194,7 +202,7 @@ class siteConfiguration(site):
                 start_date=groupDates['index']['min'].isoformat(),
                 stop_date=groupDates['index']['max'].isoformat(),          
                 )
-            for i,instrument in enumerate(groupID.split('-')):
+            for i,instrument in enumerate(self.instrumentIndexMap['ecSensors'][groupID].split('-')):
                 instrument = self.instrumentation['ecSensors'][instrument]
                 ghgMetadata.setInstrument(
                     ix=i+1,
@@ -229,7 +237,7 @@ class siteConfiguration(site):
         self.sourceFileInventory[fileID] = self.sourceFileInventory[fileID] | newFiles
         self.saveSite()
 
-    def loadFiles(self,writeTo,fileID,fileFormat,kwargs={}):
+    def loadFiles(self,writeTo,fileID,fileFormat,kwargs={},mulitProcessing=True):
         request_path = os.path.join(self.saveTo,'sourceFiles',f'{fileID}.yml')
         if os.path.isfile(request_path):
             request_kwargs = self.loadDict(request_path)
@@ -237,25 +245,38 @@ class siteConfiguration(site):
                 exit(f'Submitted kwargs do not match previous request.  Edit {fileID}.yml, or provide new fileID to ensure consistency.')
             else:
                 kwargs = request_kwargs
+        files = [file for file,md in self.sourceFileInventory[fileID].items() if md is None]
+        if mulitProcessing: max_workers=None
+        else: max_workers = 1
 
         if writeTo.endswith('Database'):
-            writer = database(databasePath=os.path.join(writeTo,'yyyy',self.siteID,fileID))
+            # Multiprocessing only an option for file reading but not writing databaser format (race condition read/write conflicts)
+            loader = partial(fileReader,fileFormat=fileFormat,kwargs=kwargs)
+            with ProcessPoolExecutor(max_workers=max_workers) as executor:
+                df = pd.concat([
+                    df for df in executor.map(loader,files)
+                ]).sort_index()
+            db = database(databasePath=os.path.join(writeTo,'yyyy',self.siteID,fileID))
+            db.loadDataFrame(df)
+            outcome = {file:True for file in files}
+
         elif writeTo.endswith('highFrequency'):
-            writer = highFrequency(outputPath=os.path.join(writeTo,self.siteID,'yyyymm'),siteID=self.siteID,fileID=fileID,typeEnforce=True)
-        for file in [file for file,md in self.sourceFileInventory[fileID].items() if md is None]:
-            df = fileParsers[fileFormat](kwargs).read(file)
-            if isinstance(writer,database) and np.nanmedian(df.index.diff().total_seconds().values)<1:
-                exit('Error: database format fails at sub-second frequency.  Write to highFrequency instead')
-            elif isinstance(writer,highFrequency) and np.nanmedian(df.index.diff().total_seconds().values)>writer.fileIntervalSeconds:
-                exit('Error: highFrequency not preferred for low-frequency data.  Write to database instead')
-            outcome = writer.loadDataFrame(df)
-            if isinstance(outcome,str) and outcome.startswith('Warning'):
-                print(outcome)
-                breakpoint()
-            self.sourceFileInventory[fileID][file] = outcome
+            # For high frequency, multiprocessing can handle both read and write
+            backEnd = highFrequency(outputPath=os.path.join(writeTo,self.siteID,'yyyymm'),siteID=self.siteID,fileID=fileID,typeEnforce=True)
+            writer = partial(fileLoader,backEnd=backEnd,fileFormat=fileFormat,kwargs=kwargs)
+            # for file in files:
+            #     outcome = writer(fileName=file)
+            #     breakpoint()
+            with ProcessPoolExecutor() as executor:
+                fileDescription = pd.concat([
+                    result for result in executor.map(writer,files)
+                ])
+            outcome = {file:True for file in files}
+            fx = self.instrumentHistory.loc[fileDescription.index,'ecSensors'].copy()
+            delete_me = fileDescription.loc[fx.isna(),('Project','file_name')]
+        breakpoint()
+        self.instrumentHistory.loc[fileDescription.index,'ecSensors']
+        self.sourceFileInventory[fileID] = self.sourceFileInventory[fileID] | outcome
         self.saveDict(kwargs,request_path)
-        self.saveSite()    
-        breakpoint()   
-        # else:
-        #     breakpoint() 
+        self.saveSite()
             

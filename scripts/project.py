@@ -40,7 +40,7 @@ class project:
             self.loadSite(siteID)
         writeTo = os.path.join(self.projectPath,outputFormat)
         self.Sites[siteID].findFiles(fileID,searchPath,fileNameMatch,fileNameExclude)
-        self.Sites[siteID].loadFiles(writeTo,fileID,fileFormat,kwargs)
+        self.Sites[siteID].loadFiles(writeTo,fileID,fileFormat,kwargs,mulitProcessing=False)
 
     def cleanDatabase(self,siteID):
         breakpoint()

@@ -95,28 +95,24 @@ instrumentation:
       serialNumber: 68
       dateStart: *stationInstalled
       dateStop: *stationDecommissioned
-      
       stationName: SCL_main
     NRLite:
       modelName: NRLite
       serialNumber: 69
       dateStart: *stationInstalled
       dateStop: *wxBreakStop
-      
       stationName: SCL_main
     SN500:
       modelName: SN500
       serialNumber: 69
       dateStart: *gscSensorsIn
       dateStop: *stationDecommissioned
-      
       stationName: SCL_main
     CS310_up:
       modelName: cs310
       serialNumber: up
       dateStart: *stationInstalled
       dateStop: *stationDecommissioned
-      
       stationName: SCL_main
     thermocouple_SSM_5:
       modelName: thermocouple
