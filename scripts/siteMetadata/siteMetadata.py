@@ -1,16 +1,25 @@
 import os
-import uuid
+import numpy as np
 import pandas as pd
 from fnmatch import fnmatch
 from datetime import datetime, timezone
 from dataclasses import dataclass, field
+from scripts.submodules.fileParser import parseCSI,parseCSV
 from scripts.siteMetadata.instrumentation import hardwareModels
+from scripts.submodules.Binary_Database.database import database
 from scripts.submodules.helperFunctions.dataclassAddOns import dataclassFromYaml, classMethods
 from scripts.submodules.helperFunctions.dictFunctions import dictFunctions
-from scripts.submodules.fluxCalculator.ecf32.ecf32Create import ghgMetadataWriter
+from scripts.submodules.fluxCalculator.ecf32.ecf32Create import highFrequency,ghgMetadataWriter
 
 configurations = os.path.join(os.getcwd(),'configFiles')
 site = dataclassFromYaml(os.path.join(configurations,'siteConfiguration.yml'),bases=(classMethods,dictFunctions))
+
+fileParsers = {
+    'TOB3':parseCSI.TOB3,
+    'TOA5':parseCSI.TOA5,
+    'MixedArray':parseCSI.MixedArray,
+    'HOBOcsv':parseCSV.HOBOcsv
+}
 
 @dataclass(kw_only=True)
 class siteConfiguration(site):
@@ -50,8 +59,8 @@ class siteConfiguration(site):
         print(f"Saving ecInstrumentGroups to: {fname}")
         self.ecInstrumentGroups.to_csv(fname)
         fname = os.path.join(self.saveTo,'sourceFiles','.sourceFileInventory.json')
-        if not os.path.isfile(fname):
-            self.saveDict(self.sourceFileInventory,fname)
+        # if not os.path.isfile(fname):
+        self.saveDict(self.sourceFileInventory,fname,indent=4)
 
     def validateMetadata(self):
         print(f"validating {self.siteID}_siteMetadata.yml")
@@ -203,19 +212,50 @@ class siteConfiguration(site):
             self.ecInstrumentGroups.append(pd.DataFrame(index=[groupID],data=ghgMetadata.asDictionary(flat=True)))
         self.ecInstrumentGroups = pd.concat(self.ecInstrumentGroups,sort=True)
 
-    def findFiles(self,request_id,fileFormat,searchPath,fileNameMatch,fileNameExclude=''):
+    def findFiles(self,fileID,searchPath,fileNameMatch,fileNameExclude=''):
         if not fileNameMatch.startswith('*'):
             fileNameMatch = f"*{fileNameMatch}"
-        self.sourceFileInventory.setdefault(request_id,{})
+        self.sourceFileInventory.setdefault(fileID,{})
         newFiles = {
                     os.path.join(dir,file):None
                     for dir,_,files in os.walk(searchPath)
                     for file in files if (
                         fnmatch(os.path.join(dir,file),fileNameMatch) and 
                         not fnmatch(os.path.join(dir,file),fileNameExclude) and
-                        os.path.join(dir,file) not in self.sourceFileInventory[request_id]
+                        os.path.join(dir,file) not in self.sourceFileInventory[fileID]
                     )
                 }
         print(f"New files found: {len(newFiles)}")
-        self.sourceFileInventory[request_id] = self.sourceFileInventory[request_id] | newFiles
+        self.sourceFileInventory[fileID] = self.sourceFileInventory[fileID] | newFiles
         self.saveSite()
+
+    def loadFiles(self,writeTo,fileID,fileFormat,kwargs={}):
+        request_path = os.path.join(self.saveTo,'sourceFiles',f'{fileID}.yml')
+        if os.path.isfile(request_path):
+            request_kwargs = self.loadDict(request_path)
+            if kwargs != {} and kwargs != request_kwargs:
+                exit(f'Submitted kwargs do not match previous request.  Edit {fileID}.yml, or provide new fileID to ensure consistency.')
+            else:
+                kwargs = request_kwargs
+
+        if writeTo.endswith('Database'):
+            writer = database(databasePath=os.path.join(writeTo,'yyyy',self.siteID,fileID))
+        elif writeTo.endswith('highFrequency'):
+            writer = highFrequency(outputPath=os.path.join(writeTo,self.siteID,'yyyymm'),siteID=self.siteID,fileID=fileID,typeEnforce=True)
+        for file in [file for file,md in self.sourceFileInventory[fileID].items() if md is None]:
+            df = fileParsers[fileFormat](kwargs).read(file)
+            if isinstance(writer,database) and np.nanmedian(df.index.diff().total_seconds().values)<1:
+                exit('Error: database format fails at sub-second frequency.  Write to highFrequency instead')
+            elif isinstance(writer,highFrequency) and np.nanmedian(df.index.diff().total_seconds().values)>writer.fileIntervalSeconds:
+                exit('Error: highFrequency not preferred for low-frequency data.  Write to database instead')
+            outcome = writer.loadDataFrame(df)
+            if isinstance(outcome,str) and outcome.startswith('Warning'):
+                print(outcome)
+                breakpoint()
+            self.sourceFileInventory[fileID][file] = outcome
+        self.saveDict(kwargs,request_path)
+        self.saveSite()    
+        breakpoint()   
+        # else:
+        #     breakpoint() 
+            

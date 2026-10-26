@@ -74,8 +74,8 @@ instrumentation:
     LI7700:
       modelName: LI7700
       serialNumber: 2
-      dateStart: *gscSensorsIn # Add functionality for temporary removal?
-      dateStop: *stationDecommissioned # Add functionality for temporary removal?
+      dateStart: *gscSensorsIn
+      dateStop: *stationDecommissioned
       xSeparation: 0.45
       ySeparation: 0.13
       zSeparation: -0.04
