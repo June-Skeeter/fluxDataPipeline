@@ -1,0 +1,17 @@
+modelName: irgason
+manufacturer: csi
+stationName: ''
+serialNumber: ''
+instrumentID:  ''
+instrumentType: sonic_irga
+instrumentClass: flux
+dateStart: ''
+dateStop: ''
+referenceSonic: true
+Zm:
+northOffset:
+xSeparation: 0
+ySeparation: 0
+zSeparation: 0
+vpathLenght: 15.31
+hpathLenght: 1.90

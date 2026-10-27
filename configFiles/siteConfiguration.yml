@@ -9,6 +9,6 @@ altitude: 0
 canopyHeight: .25
 siteDescription: ''
 instrumentation: 
-  dataLoggers: {}
-  ecSensors: {}
-  biometSensors: {}
+  dataLogger: {}
+  flux: {}
+  biomet: {}

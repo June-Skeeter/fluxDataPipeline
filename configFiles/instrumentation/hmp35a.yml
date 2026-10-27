@@ -1,0 +1,9 @@
+modelName: hmp35a
+manufacturer: vaisala
+stationName: ''
+serialNumber: ''
+instrumentID:  ''
+instrumentType: temp_rh
+instrumentClass: biomet
+dateStart: ''
+dateStop: ''

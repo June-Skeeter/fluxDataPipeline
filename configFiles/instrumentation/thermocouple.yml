@@ -1,2 +1,9 @@
+modelName: thermocouple
+manufacturer: na
+stationName: ''
+serialNumber: ''
+instrumentID:  ''
 instrumentType: thermocouple
 instrumentClass: biomet
+dateStart: ''
+dateStop: ''

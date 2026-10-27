@@ -9,10 +9,10 @@ from dataclasses import dataclass, field
 from concurrent.futures import ProcessPoolExecutor
 from scripts.siteMetadata.instrumentation import hardwareModels
 from scripts.submodules.Binary_Database.database import database
-from scripts.siteMetadata.fileLoader import fileLoader,fileReader
+from scripts.siteMetadata.fileLoader import hfFileLoader,fileReader
 from scripts.submodules.helperFunctions.dataclassAddOns import dataclassFromYaml, classMethods
 from scripts.submodules.helperFunctions.dictFunctions import dictFunctions
-from scripts.submodules.fluxCalculator.ecf32.ecf32Create import highFrequency,ghgMetadataWriter
+from scripts.submodules.fluxCalculator.ecf32.ecf32Create import ghgMetadataWriter
 
 configurations = os.path.join(os.getcwd(),'configFiles')
 site = dataclassFromYaml(os.path.join(configurations,'siteConfiguration.yml'),bases=(classMethods,dictFunctions))
@@ -33,8 +33,8 @@ class siteConfiguration(site):
             self.instrumentHistory = pd.read_csv(fname,index_col=[0],header=[0],parse_dates=[0])
             fname = os.path.join(self.saveTo,'sourceFiles',f'{self.siteID}_instrumentHistory.json')
             self.instrumentIndexMap = self.loadDict(fname)
-            fname= os.path.join(self.saveTo,f"{self.siteID}_ecInstrumentGroups.csv")
-            self.ecInstrumentGroups = pd.read_csv(fname,index_col=[0],header=[0,1])
+            fname= os.path.join(self.saveTo,f"{self.siteID}_fluxInstrumentGroups.csv")
+            self.fluxInstrumentGroups = pd.read_csv(fname,index_col=[0],header=[0,1])
             fname = os.path.join(self.saveTo,'sourceFiles','.sourceFileInventory.json')
             self.sourceFileInventory = self.loadDict(fname)
 
@@ -56,9 +56,9 @@ class siteConfiguration(site):
         self.instrumentHistory.to_csv(fname)
         fname = os.path.join(self.saveTo,'sourceFiles',f'{self.siteID}_instrumentHistory.json')
         self.saveDict(self.instrumentIndexMap,fname,indent=4)
-        fname = os.path.join(self.saveTo,f"{self.siteID}_ecInstrumentGroups.csv")
-        print(f"Saving ecInstrumentGroups to: {fname}")
-        self.ecInstrumentGroups.to_csv(fname)
+        fname = os.path.join(self.saveTo,f"{self.siteID}_fluxInstrumentGroups.csv")
+        print(f"Saving fluxInstrumentGroups to: {fname}")
+        self.fluxInstrumentGroups.to_csv(fname)
         fname = os.path.join(self.saveTo,'sourceFiles','.sourceFileInventory.json')
         self.saveDict(self.sourceFileInventory,fname,indent=4)
 
@@ -96,57 +96,57 @@ class siteConfiguration(site):
         for kind,values in temp.items():
             self.instrumentation.setdefault(kind,{})
             if kind not in hardwareModels.keys():
-                self.logError(f"Instrumentation kind = {kind} not yet supported, see/update {hardwareModels['path']}")
+                exit(f"Instrumentation kind = {kind} not yet supported, update configFiles/instrumentation")
                 
             for sourceID,model in values.items():
                 modelName = model['modelName'].lower()
                 if modelName not in hardwareModels[kind].keys():
-                    self.logError(f"Instrumentation model = {modelName} of kind = {kind} not yet supported, see/update {hardwareModels['path']}")
+                    exit(f"Instrumentation model = {modelName} of kind = {kind} not yet supported, update configFiles/instrumentation")
                 model = hardwareModels[kind][modelName](**model)
                 if model.dateStart == '':
-                    print(f"{model.ID} missing dateStart, defaulting to site-level value: {self.dateStart}")
+                    print(f"{model.instrumentID} missing dateStart, defaulting to site-level value: {self.dateStart}")
                     model.dateStart = self.dateStart
                 if model.dateStop == '':
-                    print(f"{model.ID} missing dateStop, defaulting to site-level value: {self.dateStop}")
+                    print(f"{model.instrumentID} missing dateStop, defaulting to site-level value: {self.dateStop}")
                     model.dateStop = self.dateStop
                 if model.stationName == '':
-                    print(f'Warning: witout statinoName, {model.ID} cannot be auto-linked to a datalogger, which may impact performance')
-                self.instrumentation[kind][model.ID] = model
+                    print(f'Warning: witout statinoName, {model.instrumentID} cannot be auto-linked to a datalogger, which may impact performance')
+                self.instrumentation[kind][model.instrumentID] = model
                 if self.source:
                     for key,value in model.__dict__.items():
                         if key not in self.source['instrumentation'][kind][sourceID]:
                             self.source['instrumentation'][kind][sourceID][key] = value
         
     def getInstrumentHistory(self):
-        self.instrumentIndexMap = {'biometSensors':{},'ecSensors':{}}
+        self.instrumentIndexMap = {'biomet':{},'flux':{}}
         self.instrumentHistory = pd.DataFrame()
-        if len(self.instrumentation['biometSensors']):
-            biometSensors = self.instrumentation['biometSensors']
+        if len(self.instrumentation['biomet']):
+            biomet = self.instrumentation['biomet']
             biometHistory = pd.concat([
                 pd.Series(
                     data=True,
-                    name=v.ID,
+                    name=v.instrumentID,
                     index=pd.date_range(
                         datetime.fromisoformat(v.dateStart).astimezone(timezone.utc),
                         datetime.fromisoformat(v.dateStop).astimezone(timezone.utc),
                         freq=f"1800s"),
                         )
-                for k,v in biometSensors.items()
+                for k,v in biomet.items()
                 ],axis=1,sort=True)
-            biometInstrumentHistory = pd.Series('',index=biometHistory.index,name='biometSensors')
+            biometInstrumentHistory = pd.Series('',index=biometHistory.index,name='biomet')
             for sen in biometHistory.columns:
                 biometInstrumentHistory.loc[biometHistory[sen].notna()] += f"-{sen}"
             biometInstrumentHistory = biometInstrumentHistory.str.strip('-')
-            self.instrumentIndexMap['biometSensors'] = {str(uuid.uuid5(uuid.NAMESPACE_DNS,str(idx))):idx for idx in biometInstrumentHistory.unique()}
-            biometInstrumentHistory = biometInstrumentHistory.replace(self.invertDict(self.instrumentIndexMap['biometSensors']))
+            self.instrumentIndexMap['biomet'] = {str(uuid.uuid5(uuid.NAMESPACE_DNS,str(idx))):idx for idx in biometInstrumentHistory.unique()}
+            biometInstrumentHistory = biometInstrumentHistory.replace(self.invertDict(self.instrumentIndexMap['biomet']))
         else:
-            biometInstrumentHistory = pd.Series(name='biometSensors')
-        if len(self.instrumentation['ecSensors']):
-            ecSensors = self.instrumentation['ecSensors']
+            biometInstrumentHistory = pd.Series(name='biomet')
+        if len(self.instrumentation['flux']):
+            flux = self.instrumentation['flux']
             ecHistory = pd.concat([
                 pd.Series(
                     data = True,
-                    name=v.ID,
+                    name=v.instrumentID,
                     index=pd.date_range(
                         datetime.fromisoformat(v.dateStart).astimezone(timezone.utc),
                         datetime.fromisoformat(v.dateStop).astimezone(timezone.utc),
@@ -155,70 +155,73 @@ class siteConfiguration(site):
                 if hasattr(v,'referenceSonic') and v.referenceSonic else
                 pd.Series(
                     data = False,
-                    name=v.ID,
+                    name=v.instrumentID,
                     index=pd.date_range(
                         datetime.fromisoformat(v.dateStart).astimezone(timezone.utc),
                         datetime.fromisoformat(v.dateStop).astimezone(timezone.utc),
                         freq='1800s'),
                         )
-                for k,v in ecSensors.items() 
+                for k,v in flux.items() 
             ],axis=1,sort=True)
             if ecHistory.sum(axis=1).max()>1:
-                self.logError(f"Only one reference sonic allowed per-timestamp {ecHistory.loc[ecHistory.sum(axis=1)>1]}")
+                exit(f"Only one reference sonic allowed per-timestamp {ecHistory.loc[ecHistory.sum(axis=1)>1]}")
             # Select reference sonics and perform positional calculations based off this for all scalar systems
-            ecInstrumentHistory = pd.Series('',index=ecHistory.index,name='ecSensors')
+            fluxInstrumentHistory = pd.Series('',index=ecHistory.index,name='flux')
             for ref in ecHistory.columns[ecHistory.sum()>0]:
-                refSonic = self.instrumentation['ecSensors'][ref]
+                refSonic = self.instrumentation['flux'][ref]
                 if refSonic.instrumentType == 'sonic_irga':
                     scalars = [ref]
                 else:
                     scalars = []
                 # Find all sensors referenced to the given sonic
                 scalars += list(ecHistory.columns[ecHistory.loc[ecHistory[ref]==True].count()-ecHistory.loc[ecHistory[ref]==True].sum()>0])
-                ecInstrumentHistory.loc[ecHistory[ref].notna()] = ref
+                fluxInstrumentHistory.loc[ecHistory[ref].notna()] = ref
                 for scalar in scalars:
-                    ecInstrumentHistory.loc[ecHistory[scalar].notna()] += f"-{scalar}"
+                    fluxInstrumentHistory.loc[ecHistory[scalar].notna()] += f"-{scalar}"
                     # Convert x,y separation in northwardSeparation, eastwardSeparation using north offset
                     # geographicSeparation is method added to sonic instrumentals
-                    x,y = self.instrumentation['ecSensors'][scalar].xSeparation,self.instrumentation['ecSensors'][scalar].ySeparation
-                    self.instrumentation['ecSensors'][ref].geographicSeparation
-                    north,east=self.instrumentation['ecSensors'][ref].geographicSeparation(x,y)
-                    setattr(self.instrumentation['ecSensors'][scalar],'northwardSeparation',north)
-                    setattr(self.instrumentation['ecSensors'][scalar],'eastwardSeparation',east)
-            ecInstrumentHistory = ecInstrumentHistory.str.strip('-')
-            self.instrumentIndexMap['ecSensors'] = {str(uuid.uuid5(uuid.NAMESPACE_DNS,str(idx))):idx for idx in ecInstrumentHistory.unique()}
-            ecInstrumentHistory = ecInstrumentHistory.replace(self.invertDict(self.instrumentIndexMap['ecSensors']))
+                    x,y = self.instrumentation['flux'][scalar].xSeparation,self.instrumentation['flux'][scalar].ySeparation
+                    self.instrumentation['flux'][ref].geographicSeparation
+                    north,east=self.instrumentation['flux'][ref].geographicSeparation(x,y)
+                    setattr(self.instrumentation['flux'][scalar],'northwardSeparation',north)
+                    setattr(self.instrumentation['flux'][scalar],'eastwardSeparation',east)
+            fluxInstrumentHistory = fluxInstrumentHistory.str.strip('-')
+            self.instrumentIndexMap['flux'] = {str(uuid.uuid5(uuid.NAMESPACE_DNS,str(idx))):idx for idx in fluxInstrumentHistory.unique()}
+            fluxInstrumentHistory = fluxInstrumentHistory.replace(self.invertDict(self.instrumentIndexMap['flux']))
         else:
-            ecInstrumentHistory = pd.Series(name='ecSensors')
-        self.instrumentHistory = pd.concat([biometInstrumentHistory,ecInstrumentHistory],axis=1)
+            fluxInstrumentHistory = pd.Series(name='flux')
+        self.instrumentHistory = pd.concat([biometInstrumentHistory,fluxInstrumentHistory],axis=1)
             
     def makeMetadataFiles(self):
         # Generate the template .metadata file for the group, to be filled with FileDescription at a later stage (in case different files for same configuration)
         ghgMetadata = ghgMetadataWriter()
         ghgMetadata.newFile(site_id=self.siteID,latitude=self.latitude,longitude=self.longitude,altitude=self.altitude)
-        self.ecInstrumentGroups = []
-        for groupID,groupDates in self.instrumentHistory[['ecSensors']].reset_index().groupby('ecSensors').agg(['min','max']).iterrows():
+        self.fluxInstrumentGroups = []
+        for groupID,groupDates in self.instrumentHistory[['flux']].reset_index().groupby('flux').agg(['min','max']).iterrows():
             ghgMetadata.setDates(
                 start_date=groupDates['index']['min'].isoformat(),
                 stop_date=groupDates['index']['max'].isoformat(),          
                 )
-            for i,instrument in enumerate(self.instrumentIndexMap['ecSensors'][groupID].split('-')):
-                instrument = self.instrumentation['ecSensors'][instrument]
-                ghgMetadata.setInstrument(
-                    ix=i+1,
-                    id=instrument.ID,
-                    model=instrument.modelName,
-                    manufacturer=instrument.manufacturer,
-                    height=instrument.Zm if 'sonic' in instrument.instrumentType else '',
-                    north_offset=instrument.northOffset if 'sonic' in instrument.instrumentType else '',
-                    northward_separation=instrument.northwardSeparation if hasattr(instrument,'northwardSeparation') else '',
-                    eastward_separation=instrument.eastwardSeparation if hasattr(instrument,'eastwardSeparation') else '',
-                    vertical_separation=instrument.verticalSeparation if hasattr(instrument,'verticalSeparation') else '',
-                    tube_length=instrument.tubeLength if hasattr(instrument,'tubeLength') else '',
-                    tube_diameter=instrument.tubeDiameter if hasattr(instrument,'tubeDiameter') else ''
-                    )
-            self.ecInstrumentGroups.append(pd.DataFrame(index=[groupID],data=ghgMetadata.asDictionary(flat=True)))
-        self.ecInstrumentGroups = pd.concat(self.ecInstrumentGroups,sort=True)
+            for i,instrument in enumerate(self.instrumentIndexMap['flux'][groupID].split('-')):
+                instrument = self.instrumentation['flux'][instrument]
+                if 'sonic' in instrument.instrumentType or 'irga' in instrument.instrumentType:
+                    ghgMetadata.setInstrument(
+                        ix=i+1,
+                        id=instrument.instrumentID,
+                        model=instrument.modelName,
+                        manufacturer=instrument.manufacturer,
+                        height=instrument.Zm if 'sonic' in instrument.instrumentType else '',
+                        north_offset=instrument.northOffset if 'sonic' in instrument.instrumentType else '',
+                        vpath_length=instrument.vpathLenght if 'irga' in instrument.instrumentType else '',
+                        hpath_length=instrument.hpathLenght if 'irga' in instrument.instrumentType else '',
+                        northward_separation=instrument.northwardSeparation if hasattr(instrument,'northwardSeparation') else '',
+                        eastward_separation=instrument.eastwardSeparation if hasattr(instrument,'eastwardSeparation') else '',
+                        vertical_separation=instrument.verticalSeparation if hasattr(instrument,'verticalSeparation') else '',
+                        tube_length=instrument.tubeLength if hasattr(instrument,'tubeLength') else '',
+                        tube_diameter=instrument.tubeDiameter if hasattr(instrument,'tubeDiameter') else ''
+                        )
+            self.fluxInstrumentGroups.append(pd.DataFrame(index=[groupID],data=ghgMetadata.asDictionary(flat=True)))
+        self.fluxInstrumentGroups = pd.concat(self.fluxInstrumentGroups)
 
     def findFiles(self,fileID,searchPath,fileNameMatch,fileNameExclude=''):
         if not fileNameMatch.startswith('*'):
@@ -246,7 +249,7 @@ class siteConfiguration(site):
             else:
                 kwargs = request_kwargs
         files = [file for file,md in self.sourceFileInventory[fileID].items() if md is None]
-        if mulitProcessing: max_workers=None
+        if mulitProcessing: max_workers = None
         else: max_workers = 1
 
         if writeTo.endswith('Database'):
@@ -262,20 +265,27 @@ class siteConfiguration(site):
 
         elif writeTo.endswith('highFrequency'):
             # For high frequency, multiprocessing can handle both read and write
-            backEnd = highFrequency(outputPath=os.path.join(writeTo,self.siteID,'yyyymm'),siteID=self.siteID,fileID=fileID,typeEnforce=True)
-            writer = partial(fileLoader,backEnd=backEnd,fileFormat=fileFormat,kwargs=kwargs)
-            # for file in files:
-            #     outcome = writer(fileName=file)
-            #     breakpoint()
-            with ProcessPoolExecutor() as executor:
-                fileDescription = pd.concat([
-                    result for result in executor.map(writer,files)
-                ])
-            outcome = {file:True for file in files}
-            fx = self.instrumentHistory.loc[fileDescription.index,'ecSensors'].copy()
-            delete_me = fileDescription.loc[fx.isna(),('Project','file_name')]
+            # backEnd = highFrequency(outputPath=os.path.join(writeTo,self.siteID,'yyyymm'),siteID=self.siteID,fileID=fileID,typeEnforce=True)
+            writer = partial(
+                hfFileLoader,
+                outputPath=os.path.join(writeTo,self.siteID,'yyyymm'),
+                siteID=self.siteID,
+                fileID=fileID,
+                fileFormat=fileFormat,
+                metadataGroups=self.fluxInstrumentGroups,
+                metadataTimeSeries=self.instrumentHistory['flux'],
+                kwargs=kwargs)
+            for file in files:
+                writer(fileName=file)
+            # with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            #     fileDescription = pd.concat([
+            #         result for result in executor.map(writer,files)
+            #     ])
+            # outcome = {file:True for file in files}
+            # fx = self.instrumentHistory.loc[fileDescription.index,'flux'].copy()
+            # delete_me = fileDescription.loc[fx.isna(),('Project','file_name')]
         breakpoint()
-        self.instrumentHistory.loc[fileDescription.index,'ecSensors']
+        self.instrumentHistory.loc[fileDescription.index,'flux']
         self.sourceFileInventory[fileID] = self.sourceFileInventory[fileID] | outcome
         self.saveDict(kwargs,request_path)
         self.saveSite()

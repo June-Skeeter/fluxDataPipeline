@@ -3,14 +3,14 @@ lat_lon: [69.319508, -135.478002]
 dateStart: &stationInstalled 2026-06-11T00:00:00+00:00
 dateStop: &stationDecommissioned 2026-08-05T00:00:00+00:00
 instrumentation:
-  dataLoggers:
+  dataLogger:
     main:
       dateStart: *stationInstalled
       dateStop: *stationDecommissioned
       modelName: CR1000x
       serialNumber: 79570
       stationName: BSP
-  ecSensors:
+  flux:
     IRGASON:
       modelName: IRGASON
       serialNumber: 1
@@ -35,7 +35,7 @@ instrumentation:
       xSeparation: 0.5
       ySeparation: 0.1
       zSeparation: 0
-  biometSensors:
+  biomet:
     HMP35A:
       modelName: HMP35A
       serialNumber: 69

@@ -1,0 +1,14 @@
+modelName: li7700
+manufacturer: licor
+stationName: ''
+serialNumber: ''
+instrumentID:  ''
+instrumentType: irga
+instrumentClass: flux
+dateStart: ''
+dateStop: ''
+xSeparation: 
+ySeparation: 
+zSeparation: 
+vpathLenght: 1.0
+hpathLenght: 1.0

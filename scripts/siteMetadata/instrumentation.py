@@ -7,7 +7,6 @@ import os
 
 configurations = os.path.join(os.getcwd(),'configFiles','instrumentation')
 
-
 @dataclass(kw_only=True)
 class instrument():
     # Takes values from configs defined below, maps basic functionality for key fields
@@ -15,8 +14,8 @@ class instrument():
         self.modelName = self.modelName.lower()
         if self.serialNumber == self.__dataclass_fields__['serialNumber'].default:
             self.serialNumber = f"{str(random.randint(0,999999)).zfill(6)}"
-        if self.ID == self.__dataclass_fields__['ID'].default:
-            self.ID = f"{self.modelName}_{self.serialNumber}"
+        if self.instrumentID == self.__dataclass_fields__['instrumentID'].default:
+            self.instrumentID = f"{self.modelName}_{self.serialNumber}"
         try:
             if self.dateStart != '':
                 if not isinstance(self.dateStart,str):
@@ -54,18 +53,27 @@ class calculateSeparation:
         eastwardSeparation = float(Rv[0])
         return(northwardSeparation,eastwardSeparation)
 
-
-
-genericSensor = dataclassFromYaml(os.path.join(configurations,"genericSensor.yml"),(instrument,))
-hardwareModels = dataclassFromYaml(os.path.join(configurations,"hardwareModels.yml"),asDataclass=False)
-# Read the instrument list-config mapping
-for kind in hardwareModels.keys():
-    for key,value in hardwareModels[kind].items():
-        filePath = os.path.join(configurations,f"{value}.yml")
-        if 'sonic' in value:
-            hardwareModels[kind][key] = dataclassFromYaml(filePath,(genericSensor,calculateSeparation))
-        elif kind == 'dataLoggers':
-            hardwareModels[kind][key] = dataclassFromYaml(filePath)
+soncis = ['csat3','irgason']
+hardwareModels = {}
+for fn in os.listdir(configurations):
+    if fn.endswith('.yml'):
+        fp = os.path.join(configurations,fn)
+        if fn.split('.')[0] in soncis:
+            sensor = dataclassFromYaml(fp,(instrument,calculateSeparation))
         else:
-            hardwareModels[kind][key] = dataclassFromYaml(filePath,(genericSensor,))
-hardwareModels['path'] = os.path.join(configurations,"hardwareModels.yml")
+            sensor = dataclassFromYaml(fp,(instrument,))
+        hardwareModels.setdefault(sensor.instrumentClass,{})
+        hardwareModels[sensor.instrumentClass][sensor.modelName] = sensor
+# breakpoint()
+# hardwareModels = dataclassFromYaml(os.path.join(configurations,"hardwareModels.yml"),asDataclass=False)
+# # Read the instrument list-config mapping
+# for kind in hardwareModels.keys():
+#     for key,value in hardwareModels[kind].items():
+#         filePath = os.path.join(configurations,f"{value}.yml")
+#         if 'sonic' in value:
+#             hardwareModels[kind][key] = dataclassFromYaml(filePath,(genericSensor,calculateSeparation))
+#         elif kind == 'dataLogger':
+#             hardwareModels[kind][key] = dataclassFromYaml(filePath)
+#         else:
+#             hardwareModels[kind][key] = dataclassFromYaml(filePath,(genericSensor,))
+# hardwareModels['path'] = os.path.join(configurations,"hardwareModels.yml")

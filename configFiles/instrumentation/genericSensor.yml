@@ -1,9 +1,9 @@
-modelName: 
-instrumentType:
-instrumentClass:
-stationName: ''
+modelName: ''
 manufacturer: ''
+stationName: ''
 serialNumber: ''
-ID:  ''
+instrumentID:  ''
+instrumentType: ''
+instrumentClass: ''
 dateStart: ''
 dateStop: ''

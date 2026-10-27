@@ -32,22 +32,22 @@ if __name__ == '__main__':
     #     fileNameMatch='Flux_Data*.dat',
     #     outputFormat='highFrequency',
     #     kwargs={'columnHeaderOverwrite':{
-    #         'Ux':{'ID':'csat3_1'},
-    #         'Uy':{'ID':'csat3_1'},
-    #         'Uz':{'ID':'csat3_1'},
-    #         'Ts':{'ID':'csat3_1'},
-    #         'Diagnostic_CSAT':{'ID':'csat3_1'},
-    #         'CO2':{'ID':'li7500_1'},
-    #         'H2O':{'ID':'li7500_1'},
-    #         'press':{'ID':'li7500_1'},
-    #         'LI7500_diag':{'ID':'li7500_1'},
-    #         'LI7550_SignalStrength':{'ID':'li7500_1'},
-    #         'Diagnostic_7700':{'ID':'li7700_1'},
-    #         'CH4_density':{'ID':'li7700_1'},
-    #         'CH4_mole_fraction':{'ID':'li7700_1'},
-    #         'Temperature':{'ID':'li7700_1'},
-    #         'Pressure':{'ID':'li7700_1'},
-    #         'RSSI':{'ID':'li7700_1'},
+    #         'Ux':{'instrumentID':'csat3_1'},
+    #         'Uy':{'instrumentID':'csat3_1'},
+    #         'Uz':{'instrumentID':'csat3_1'},
+    #         'Ts':{'instrumentID':'csat3_1'},
+    #         'Diagnostic_CSAT':{'instrumentID':'csat3_1'},
+    #         'CO2':{'instrumentID':'li7500_1'},
+    #         'H2O':{'instrumentID':'li7500_1'},
+    #         'press':{'instrumentID':'li7500_1'},
+    #         'LI7500_diag':{'instrumentID':'li7500_1'},
+    #         'LI7550_SignalStrength':{'instrumentID':'li7500_1'},
+    #         'Diagnostic_7700':{'instrumentID':'li7700_1'},
+    #         'CH4_density':{'instrumentID':'li7700_1'},
+    #         'CH4_mole_fraction':{'instrumentID':'li7700_1'},
+    #         'Temperature':{'instrumentID':'li7700_1'},
+    #         'Pressure':{'instrumentID':'li7700_1'},
+    #         'RSSI':{'instrumentID':'li7700_1'},
     #         }}
     # )
 
@@ -59,7 +59,7 @@ if __name__ == '__main__':
     #     fileNameExclude='*.archive*',
     #     fileNameMatch='Met_Data*.dat',
     #     kwargs={'columnHeaderOverwrite':{
-    #         'AirTC_Avg':{'ID':'hmp35a_68'},
+    #         'AirTC_Avg':{'instrumentID':'hmp35a_68'},
     #         }}
     # )
 
@@ -67,32 +67,32 @@ if __name__ == '__main__':
         siteID='SCL',
         fileID='Flux_Data_v2',
         fileFormat='TOB3',
-        searchPath=os.path.join(source,'SCL','20260930'),
+        searchPath=os.path.join(source,'SCL','2025','20250806'),
         fileNameExclude='*.archive*',
         fileNameMatch='*Time_Series*.dat',
         outputFormat='highFrequency',
         kwargs={
             'keepDuplicates':'shift',
             'columnHeaderOverwrite':{
-                'Ux':{'ID':'irgason_1'},
-                'Uy':{'ID':'irgason_1'},
-                'Uz':{'ID':'irgason_1'},
-                'T_SONIC':{'ID':'irgason_1'},
-                'diag_sonic':{'ID':'irgason_1'},
-                'CO2_density':{'ID':'irgason_1'},
-                'CO2_density_fast_tmpr':{'ID':'irgason_1'},
-                'H2O_density':{'ID':'irgason_1'},
-                'diag_irga':{'ID':'irgason_1'},
-                'T_SONIC_corr':{'ID':'irgason_1'},
-                'TA_1_1_1':{'ID':'100k6a1a_1'},
-                'PA':{'ID':'irgason_1'},
-                'CO2_sig_strgth':{'ID':'irgason_1'},
-                'H2O_sig_strgth':{'ID':'irgason_1'},
-                'LI7700_CH4D':{'ID':'li7700_2'},
-                'LI7700_pressure':{'ID':'li7700_2'},
-                'LI7700_temperature':{'ID':'li7700_2'},
-                'LI7700_sig_strgth':{'ID':'li7700_2'},
-                'LI7700_diag':{'ID':'li7700_2'},
+                'Ux':{'instrumentID':'irgason_1'},
+                'Uy':{'instrumentID':'irgason_1'},
+                'Uz':{'instrumentID':'irgason_1'},
+                'T_SONIC':{'instrumentID':'irgason_1'},
+                'diag_sonic':{'instrumentID':'irgason_1'},
+                'CO2_density':{'instrumentID':'irgason_1'},
+                'CO2_density_fast_tmpr':{'units':'mg m-3','instrumentID':'irgason_1'},
+                'H2O_density':{'instrumentID':'irgason_1'},
+                'diag_irga':{'instrumentID':'irgason_1'},
+                'T_SONIC_corr':{'instrumentID':'irgason_1'},
+                'TA_1_1_1':{'instrumentID':'100k6a1a_1'},
+                'PA':{'instrumentID':'irgason_1'},
+                'CO2_sig_strgth':{'instrumentID':'irgason_1'},
+                'H2O_sig_strgth':{'instrumentID':'irgason_1'},
+                'LI7700_CH4D':{'instrumentID':'li7700_2'},
+                'LI7700_pressure':{'instrumentID':'li7700_2'},
+                'LI7700_temperature':{'instrumentID':'li7700_2'},
+                'LI7700_sig_strgth':{'instrumentID':'li7700_2'},
+                'LI7700_diag':{'instrumentID':'li7700_2'},
             }}
     )
     # pr.loadFiles(
@@ -105,6 +105,6 @@ if __name__ == '__main__':
     #     kwargs={
     #         'fileNameDef':os.path.join(source,"SCL/2024/20240914/OverWinter.DEF"),
     #         'columnHeaderOverwrite':{
-    #         'AirTC_AVG':{'ID':'hmp35a_68'},
+    #         'AirTC_AVG':{'instrumentID':'hmp35a_68'},
     #         }}
     # )

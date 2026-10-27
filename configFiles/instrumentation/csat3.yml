@@ -1,0 +1,12 @@
+modelName: csat3
+manufacturer: csi
+stationName: ''
+serialNumber: ''
+instrumentID:  ''
+instrumentType: sonic
+instrumentClass: flux
+dateStart: ''
+dateStop: ''
+referenceSonic: true
+Zm:
+northOffset:

@@ -9,7 +9,7 @@ siteDescription: 'Sedge wetland underlain by continuous permafrost'
 dateStart: &stationInstalled "2024-07-10T00:00:00+00:00"
 dateStop: &stationDecommissioned "2028-03-31T23:59:59+00:00"
 instrumentation:
-  dataLoggers:
+  dataLogger:
     main:
       dateStart: *stationInstalled
       dateStop: *stationDecommissioned
@@ -34,7 +34,7 @@ instrumentation:
       modelName: hobo
       serialNumber: 2
       stationName: WSM
-  ecSensors:
+  flux:
     CSAT3-UBC:
       modelName: CSAT3
       serialNumber: 1
@@ -89,7 +89,7 @@ instrumentation:
       ySeparation: -50
       zSeparation: 0
       stationName: SCL_main
-  biometSensors:
+  biomet:
     HMP35A:
       modelName: HMP35A
       serialNumber: 68
